@@ -92,6 +92,7 @@
     </div>
 
     <script>
+        // 1. 초기 설정
         const firebaseConfig = {
             apiKey: "AIzaSyAS5Upi4F1YgkH2bnHfw7gyY8bd9oCDMyI",
             authDomain: "acron-d6936.firebaseapp.com",
@@ -110,25 +111,49 @@
         const resultText = document.getElementById('result-text');
         const usernameInput = document.getElementById('username');
 
-        lever.addEventListener('click', () => {
-            const name = usernameInput.value;
-            if (!name) { alert("이름을 적어주세요."); return; }
+        // 2. 레버 클릭 시 동작
+        lever.addEventListener('click', async () => {
+            const name = usernameInput.value.trim();
+            if (!name) { alert("이름을 입력해주세요."); return; }
 
-            let selectedNumber = null;
+            // [STEP 1] 서버에서 중복 참여 확인
+            const snapshot = await db.ref('history').once('value');
+            const history = snapshot.val();
+
+            if (history && Object.values(history).some(item => item.name === name)) {
+                alert("이미 참여하신 분입니다.");
+                lever.style.pointerEvents = 'none'; // 클릭 방지
+                lever.style.opacity = '0.3';
+                return;
+            }
+
+            // [STEP 2] 번호 뽑기 및 결과 저장 (트랜잭션)
             db.ref('pool').transaction((pool) => {
                 if (pool === null) return { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2 };
+
                 let available = [];
                 for (let i = 1; i <= 7; i++) if (pool[i] > 0) available.push(i);
-                if (available.length === 0) return pool;
 
-                selectedNumber = available[Math.floor(Math.random() * available.length)];
-                pool[selectedNumber]--;
-                db.ref('history').push({ name: name, number: selectedNumber, time: new Date().toLocaleTimeString() });
+                if (available.length === 0) return pool; // 뽑을 번호가 없을 때
+
+                const choice = available[Math.floor(Math.random() * available.length)];
+                pool[choice]--; // 남은 수량 차감
+                pool.lastChoice = choice; // 결과 임시 저장
+
                 return pool;
-            }, (error, committed) => {
-                if (committed && selectedNumber !== null) {
+            }, (error, committed, snapshot) => {
+                if (committed && snapshot && snapshot.val().lastChoice) {
+                    const choice = snapshot.val().lastChoice;
+
+                    // [STEP 3] 기록 남기기 (이름, 번호, 시간)
+                    db.ref('history').push({ name: name, number: choice, time: new Date().toLocaleTimeString() });
+
+                    // [STEP 4] UI 잠그기
                     lever.classList.add('disabled');
-                    resultText.innerHTML = `<span style="color:#b22222;">${name}</span>님의 운명은<br><span style="font-size:50px;">${selectedNumber}번</span>입니다.`;
+                    lever.style.pointerEvents = 'none';
+                    resultText.innerHTML = `<span style="color:#b22222;">${name}</span>님의 운명은<br><span style="font-size:50px;">${choice}번</span>입니다.`;
+                } else {
+                    alert("뽑기에 실패했거나 이미 운명이 모두 결정되었습니다.");
                 }
             });
         });
