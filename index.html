@@ -8,51 +8,90 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
     <style>
         body {
-            background: #0a0a0a;
+            background: #2b2520;
+            /* 양피지 느낌의 어두운 배경 */
+            background-image: radial-gradient(circle, #3d342b 1px, transparent 1px);
+            background-size: 20px 20px;
             color: #d4af37;
             text-align: center;
             font-family: 'Georgia', serif;
             padding-top: 50px;
         }
 
+        .parchment {
+            background: #e6dcc7;
+            color: #4a3728;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), inset 0 0 10px #c1b391;
+            display: inline-block;
+            width: 80%;
+            max-width: 400px;
+            border: 2px solid #b8860b;
+        }
+
         .lever-box {
             font-size: 80px;
             cursor: pointer;
-            transition: 0.3s;
-            margin-top: 20px;
+            transition: 0.5s;
+            margin: 30px 0;
+            filter: drop-shadow(0 0 10px #d4af37);
+        }
+
+        .lever-box:hover {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 20px #ffdf00);
         }
 
         .lever-box.disabled {
             cursor: not-allowed;
             opacity: 0.3;
+            filter: none;
+        }
+
+        /* 빛나는 효과 */
+        .glow {
+            animation: shine 1.5s infinite alternate;
+        }
+
+        @keyframes shine {
+            from {
+                text-shadow: 0 0 5px #fff;
+            }
+
+            to {
+                text-shadow: 0 0 20px #ffdf00;
+            }
         }
 
         input {
-            background: #1a1a1a;
-            color: #fff;
-            border: 1px solid #d4af37;
+            background: #dcd0b5;
+            border: 1px solid #8b4513;
             padding: 10px;
             width: 200px;
             text-align: center;
+            font-family: 'Georgia', serif;
+            color: #4a3728;
         }
 
         #result-text {
-            font-size: 30px;
+            font-size: 24px;
             margin-top: 30px;
-            color: #fff;
+            font-weight: bold;
         }
     </style>
 </head>
 
 <body>
-    <h1>운명의 심판</h1>
-    <p>이름을 입력하고 레버를 당겨 운명을 확인하세요.</p>
-    <input type="text" id="username" placeholder="이름을 입력하세요">
-    <div id="lever" class="lever-box">🎚️</div>
-    <div id="result-text">?</div>
+    <div class="parchment">
+        <h1>운명의 심판</h1>
+        <p>이름을 기록하고 레버를 당겨<br>당신의 운명을 마주하십시오.</p>
+        <input type="text" id="username" placeholder="이름을 입력하세요">
+        <div id="lever" class="lever-box">🎚️</div>
+        <div id="result-text" class="glow">?</div>
+    </div>
 
     <script>
-
         const firebaseConfig = {
             apiKey: "AIzaSyAS5Upi4F1YgkH2bnHfw7gyY8bd9oCDMyI",
             authDomain: "acron-d6936.firebaseapp.com",
@@ -68,91 +107,32 @@
         const db = firebase.database();
 
         const lever = document.getElementById('lever');
-        const usernameInput = document.getElementById('username');
         const resultText = document.getElementById('result-text');
+        const usernameInput = document.getElementById('username');
 
         lever.addEventListener('click', () => {
             const name = usernameInput.value;
-            if (!name) { alert("이름을 입력해주세요!"); return; }
+            if (!name) { alert("이름을 적어주세요."); return; }
 
-            let selectedNumber = null; // 결과값을 담을 변수
-
+            let selectedNumber = null;
             db.ref('pool').transaction((pool) => {
                 if (pool === null) return { 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2 };
-
                 let available = [];
                 for (let i = 1; i <= 7; i++) if (pool[i] > 0) available.push(i);
-
                 if (available.length === 0) return pool;
 
                 selectedNumber = available[Math.floor(Math.random() * available.length)];
                 pool[selectedNumber]--;
-
-                db.ref('history').push({
-                    name: name,
-                    number: selectedNumber,
-                    time: new Date().toLocaleTimeString()
-                });
-
+                db.ref('history').push({ name: name, number: selectedNumber, time: new Date().toLocaleTimeString() });
                 return pool;
             }, (error, committed) => {
                 if (committed && selectedNumber !== null) {
                     lever.classList.add('disabled');
-                    lever.style.pointerEvents = 'none';
-                    resultText.innerText = `${name}님의 운명은 ${selectedNumber}번입니다.`;
+                    resultText.innerHTML = `<span style="color:#b22222;">${name}</span>님의 운명은<br><span style="font-size:50px;">${selectedNumber}번</span>입니다.`;
                 }
             });
         });
-        // ... (위쪽 코드 생략)
-
-// 1. 페이지 로드 시 이미 뽑은 사람인지 확인
-const hasDrawn = localStorage.getItem('hasDrawn');
-if (hasDrawn === 'true') {
-    lever.classList.add('disabled');
-    lever.style.pointerEvents = 'none';
-    resultText.innerText = "이미 운명을 확인하셨습니다.";
-}
-
-lever.addEventListener('click', () => {
-    const name = usernameInput.value;
-    if (!name) { alert("이름을 입력해주세요!"); return; }
-
-    let selectedNumber = null;
-
-    db.ref('pool').transaction((pool) => {
-        if (pool === null) return { 1:2, 2:2, 3:2, 4:2, 5:2, 6:2, 7:2 };
-        
-        let available = [];
-        for(let i=1; i<=7; i++) if(pool[i] > 0) available.push(i);
-        
-        if (available.length === 0) return pool;
-        
-        selectedNumber = available[Math.floor(Math.random() * available.length)];
-        pool[selectedNumber]--;
-        
-        db.ref('history').push({
-            name: name,
-            number: selectedNumber,
-            time: new Date().toLocaleTimeString()
-        });
-        
-        return pool;
-    }, (error, committed) => {
-        if (committed && selectedNumber !== null) {
-            // 2. 뽑기 성공 시 브라우저에 저장
-            localStorage.setItem('hasDrawn', 'true');
-            
-            lever.classList.add('disabled');
-            lever.style.pointerEvents = 'none';
-            resultText.innerText = `${name}님의 운명은 ${selectedNumber}번입니다.`;
-        } else if (committed) {
-            alert("운명이 모두 결정되었습니다.");
-        }
-    });
-});
     </script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
 </body>
 
 </html>
