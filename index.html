@@ -194,8 +194,7 @@
         // 400ms마다 꽃잎 생성
         setInterval(createPetal, 400);
         // ------------------------------------
-
-const firebaseConfig = {
+      const firebaseConfig = {
             apiKey: "AIzaSyAS5Upi4F1YgkH2bnHfw7gyY8bd9oCDMyI",
             authDomain: "acron-d6936.firebaseapp.com",
             databaseURL: "https://acron-d6936-default-rtdb.firebaseio.com",
@@ -204,9 +203,8 @@ const firebaseConfig = {
             messagingSenderId: "360071264065",
             appId: "1:360071264065:web:c20d68e3feee0e6e2053c0"
         };
-        // Initialize Firebase (기존 설정값을 여기에 추가하세요)
-        // const app = firebase.initializeApp(firebaseConfig);
-        // const db = firebase.database();
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
         const garden = document.getElementById('garden');
         const resultText = document.getElementById('result-text');
