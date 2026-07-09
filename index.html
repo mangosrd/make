@@ -231,10 +231,15 @@
 
             // [STEP 2] 번호 뽑기 및 결과 저장 (트랜잭션) - 기존 로직 동일
             db.ref('pool').transaction((pool) => {
-                if (pool === null) return { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1};
+                // 초기 데이터가 없을 경우 return으로 끝내지 말고 값을 할당해 줍니다.
+                if (pool === null) {
+                    pool = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1 };
+                }
 
                 let available = [];
-                for (let i = 1; i <= 5; i++) if (pool[i] > 0) available.push(i);
+                for (let i = 1; i <= 5; i++) {
+                    if (pool[i] > 0) available.push(i);
+                }
 
                 if (available.length === 0) return pool; // 뽑을 번호가 없을 때
 
@@ -244,11 +249,20 @@
 
                 return pool;
             }, (error, committed, snapshot) => {
+                if (error) {
+                    console.error("Transaction failed: ", error);
+                    return;
+                }
+                
                 if (committed && snapshot && snapshot.val().lastChoice) {
                     const choice = snapshot.val().lastChoice;
 
                     // [STEP 3] 기록 남기기 (이름, 번호, 시간)
-                    db.ref('history').push({ name: name, number: choice, time: new Date().toLocaleTimeString() });
+                    db.ref('history').push({ 
+                        name: name, 
+                        number: choice, 
+                        time: new Date().toLocaleTimeString() 
+                    });
 
                     // [STEP 4] UI 잠그기
                     garden.classList.add('disabled');
